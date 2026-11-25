@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perplexity Explorer — Ascend Edition</title>
+
+  <!-- Typography: Inter for UI & JetBrains Mono for telemetry numerals -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* -------------------------------------------------------------
+       1. GLOBAL RESET & DESIGN TOKENS (Ascend Orbital Space-Glass)
+       ------------------------------------------------------------- */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-space: #04070D;
+      --card-glass: rgba(11, 16, 28, 0.72);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --card-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+      --text-white: #F8FAFC;
+      --text-slate: #CBD5E1;
+      --text-muted: #94A3B8;
+      --accent-mint: #34D399;
+      --accent-teal: #2DD4BF;
+      --accent-cyan: #38BDF8;
+      --accent-blue: #3B82F6;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-space);
+      color: var(--text-white);
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* -------------------------------------------------------------
+       2. FIXED 3D REVOLVING EARTH & DEEP SPACE CANVAS CONTAINER
+       ------------------------------------------------------------- */
+    #canvasContainer {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      overflow: hidden;
+      background-color: var(--bg-space);
+      transform-origin: center center;
+      transition: filter 0.1s linear, opacity 0.1s linear, transform 0.1s linear;
+      will-change: filter, opacity, transform;
+    }
+
+    #earthCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Atmospheric horizon twilight overlay */
+    .space-vignette {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 25%, transparent 20%, rgba(4, 7, 13, 0.4) 65%, #04070D 95%);
+    }
+
+    /* -------------------------------------------------------------
+       3. STICKY FROSTED-GLASS TOP NAVIGATION BAR
+       ------------------------------------------------------------- */
+    nav.sticky-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(7, 11, 20, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      height: 62px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+    }
+
+    .nav-inner {
+      max-width: 1120px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-white);
+      text-decoration: none;
+    }
+
+    .nav-brand .brand-delta {
+      color: var(--accent-mint);
+      font-size: 0.9rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.84rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-white);
+    }
+
+    .nav-cta {
+      background: #F8FAFC;
+      color: #090D16;
+      font-weight: 600;
+      font-size: 0.82rem;
+      border-radius: 999px;
+      padding: 0.42rem 1.05rem;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 10px rgba(248, 250, 252, 0.15);
+    }
+
+    .nav-cta:hover {
+      background: #FFFFFF;
+      transform: translateY(-1px);
+    }
+
+    /* -------------------------------------------------------------
+       4. CENTERED HERO SECTION
+       ------------------------------------------------------------- */
+    header.hero-section {
+      padding: 72px 20px 52px;
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .hero-eyebrow {
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      display: inline-block;
+    }
+
+    .hero-headline {
+      font-size: clamp(2.4rem, 5vw, 3.75rem);
+      font-weight: 800;
+      color: var(--text-white);
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+      margin-bottom: 16px;
+    }
+
+    .gradient-word {
+      background: linear-gradient(90deg, var(--accent-mint), var(--accent-teal), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+
+    .hero-subtitle {
+      max-width: 540px;
+      margin: 0 auto;
+      color: var(--text-slate);
+      font-size: 1.02rem;
+      line-height: 1.6;
+    }
+
+    /* -------------------------------------------------------------
+       5. TRANSLUCENT DARK SPACE-GLASS CARDS
+       ------------------------------------------------------------- */
+    main.content-container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+      position: relative;
+    }
+
+    .glass-card {
+      background: var(--card-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 1.75rem 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.2s ease;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .card-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .card-heading {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-white);
+      letter-spacing: -0.01em;
+    }
+
+    .card-description {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    /* Badges */
+    .badge-emerald {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      color: var(--accent-mint);
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .badge-amber {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #FBBF24;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    /* -------------------------------------------------------------
+       6. INPUTS, BUTTONS & SAMPLES
+       ------------------------------------------------------------- */
+    .input-cta-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .dark-glass-input {
+      flex: 1;
+      height: 48px;
+      padding: 0 16px;
+      background: rgba(6, 10, 19, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      color: var(--text-white);
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .dark-glass-input:focus {
+      border-color: var(--accent-teal);
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.2);
+    }
+
+    .btn-calc-gradient {
+      height: 48px;
+      padding: 0 24px;
+      background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));
+      color: #041019;
+      font-weight: 700;
+      font-size: 0.9rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      transition: opacity 0.15s ease, transform 0.1s ease;
+      box-shadow: 0 4px 16px rgba(45, 212, 191, 0.28);
+    }
+
+    .btn-calc-gradient:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    .btn-calc-gradient:active {
+      transform: translateY(0);
+    }
+
+    .btn-calc-gradient:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .samples-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 0.82rem;
+      margin-bottom: 14px;
+    }
+
+    .samples-label {
+      color: var(--text-muted);
+      font-weight: 500;
+      margin-right: 4px;
+    }
+
+    .dark-glass-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-slate);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 0.82rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dark-glass-pill:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: var(--text-white);
+    }
+
+    .status-text {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-text.ready {
+      color: var(--accent-mint);
+      font-weight: 500;
+    }
+
+    .status-text.error {
+      color: #F87171;
+      font-weight: 500;
+    }
+
+    .error-banner {
+      margin-top: 10px;
+      padding: 12px 16px;
+      background: rgba(220, 38, 38, 0.15);
+      border: 1px solid rgba(248, 113, 113, 0.4);
+      border-radius: 8px;
+      color: #FCA5A5;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    /* -------------------------------------------------------------
+       7. CLEAN DARK TELEMETRY DATA TABLE
+       ------------------------------------------------------------- */
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      background: rgba(5, 8, 16, 0.65);
+      margin-bottom: 18px;
+    }
+
+    table.dark-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      text-align: left;
+    }
+
+    table.dark-table th {
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    table.dark-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-white);
+    }
+
+    table.dark-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    table.dark-table tr:hover td {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .token-chip-cyan {
+      display: inline-block;
+      padding: 3px 9px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: #38BDF8;
+      font-size: 0.84rem;
+    }
+
+    .empty-row-cell {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 28px 16px;
+      font-style: italic;
+    }
+
+    /* -------------------------------------------------------------
+       8. THREE-COLUMN HORIZONTAL STEP GRID
+       ------------------------------------------------------------- */
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 768px) {
+      .step-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .step-subcard {
+      background: rgba(6, 10, 20, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 110px;
+    }
+
+    .step-header-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .step-display-value {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: var(--text-white);
+      word-break: break-word;
+      line-height: 1.45;
+    }
+
+    .step-subcard.step3-highlight {
+      border-color: rgba(52, 211, 153, 0.35);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .step-subcard.step3-highlight .step-header-label {
+      color: var(--accent-mint);
+    }
+
+    .step3-large-number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent-mint);
+      display: block;
+      margin-top: 2px;
+      letter-spacing: -0.02em;
+    }
+
+    .step-intuition-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      line-height: 1.4;
+      font-family: var(--font-sans);
+    }
+
+    /* -------------------------------------------------------------
+       9. CARD 3 — TOP 8 PREDICTIONS GRID
+       ------------------------------------------------------------- */
+    .predictions-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .predictions-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .pred-row-card {
+      padding: 12px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      background: rgba(6, 10, 20, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pred-row-card.top1-candidate {
+      border-color: rgba(52, 211, 153, 0.4);
+      background: rgba(52, 211, 153, 0.08);
+    }
+
+    .pred-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .pred-token-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pred-index-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      width: 16px;
+    }
+
+    .pred-progress-bg {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .pred-progress-bar {
+      height: 100%;
+      background: #64748B;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .pred-row-card.top1-candidate .pred-progress-bar {
+      background: linear-gradient(90deg, var(--accent-mint), var(--accent-cyan));
+    }
+
+    /* -------------------------------------------------------------
+       10. CARD 4 — EDITABLE TOKEN ROWS (SIMULATOR)
+       ------------------------------------------------------------- */
+    .token-edit-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      background: rgba(6, 10, 20, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 8px 14px;
+    }
+
+    .token-edit-row .row-num {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      width: 24px;
+    }
+
+    .token-edit-row input[type="text"] {
+      width: 130px;
+      padding: 7px 10px;
+      background: rgba(11, 16, 28, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      color: var(--text-white);
+      font-family: var(--font-mono);
+      font-size: 0.86rem;
+      outline: none;
+    }
+
+    .token-edit-row input[type="range"] {
+      flex: 1;
+      cursor: pointer;
+      accent-color: var(--accent-teal);
+    }
+
+    .token-edit-row input[type="number"] {
+      width: 78px;
+      padding: 7px 8px;
+      background: rgba(11, 16, 28, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      color: var(--text-white);
+      font-family: var(--font-mono);
+      font-size: 0.86rem;
+      text-align: right;
+      outline: none;
+    }
+
+    .btn-remove-token {
+      background: transparent;
+      border: none;
+      color: #94A3B8;
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 1.1rem;
+      line-height: 1;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .btn-remove-token:hover {
+      color: #EF4444;
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    .btn-add-row {
+      margin-top: 8px;
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px dashed rgba(255, 255, 255, 0.18);
+      color: var(--text-slate);
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-add-row:hover {
+      border-color: var(--accent-teal);
+      color: var(--accent-teal);
+      background: rgba(45, 212, 191, 0.08);
+    }
+
+    /* -------------------------------------------------------------
+       11. SUBTLE DARK FOOTER
+       ------------------------------------------------------------- */
+    footer.space-footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 32px 24px;
+      background: rgba(4, 7, 13, 0.85);
+      backdrop-filter: blur(12px);
+    }
+
+    .footer-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .footer-left {
+      color: var(--text-white);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =========================================================
+       FIXED 3D REVOLVING EARTH GLOBE & DEEP SPACE CANVAS
+       ========================================================= -->
+  <div id="canvasContainer" aria-hidden="true">
+    <canvas id="earthCanvas"></canvas>
+  </div>
+  <div class="space-vignette" aria-hidden="true"></div>
+
+  <!-- =========================================================
+       STICKY FROSTED-GLASS TOP NAVIGATION BAR
+       ========================================================= -->
+  <nav class="sticky-nav">
+    <div class="nav-inner">
+      <a href="#top" class="nav-brand">
+        <span class="brand-delta">▲</span> PERPLEXITY EXPLORER
+      </a>
+
+      <div class="nav-links">
+        <a href="#sec1">Model</a>
+        <a href="#sec2">Perplexity</a>
+        <a href="#sec3">Next Token</a>
+        <a href="#sec4">Simulator</a>
+      </div>
+
+      <a href="#sec4" class="nav-cta">Try by Hand</a>
+    </div>
+  </nav>
+
+  <!-- =========================================================
+       CENTERED HERO SECTION
+       ========================================================= -->
+  <header class="hero-section" id="top">
+    <span class="hero-eyebrow">IN-BROWSER LANGUAGE MODEL</span>
+    <h1 class="hero-headline">
+      Explore <span class="gradient-word">Perplexity</span> in<br />Real Time
+    </h1>
+    <p class="hero-subtitle">
+      Run a real GPT-2 model directly in your browser with Transformers.js, inspect token probabilities, and see how perplexity measures surprise.
+    </p>
+  </header>
+
+  <!-- =========================================================
+       MAIN CONTENT CONTAINER (TRANSLUCENT DARK SPACE-GLASS CARDS)
+       ========================================================= -->
+  <main class="content-container">
+
+    <!-- -------------------------------------------------------
+         CARD 1: TYPE A SENTENCE
+         ------------------------------------------------------- -->
+    <section class="glass-card" id="sec1">
+      <div class="card-header-row">
+        <h2 class="card-heading">1. Type a sentence</h2>
+        <span class="badge-emerald">Xenova/distilgpt2 (q8)</span>
+      </div>
+
+      <div class="input-cta-row">
+        <input
+          type="text"
+          id="sentenceInput"
+          class="dark-glass-input"
+          value="I love Python"
+          placeholder="Enter a sentence..."
+        />
+        <button id="calcBtn" class="btn-calc-gradient">
+          <span id="btnText">Calculate perplexity</span>
+        </button>
+      </div>
+
+      <div class="samples-row">
+        <span class="samples-label">Samples:</span>
+        <button class="dark-glass-pill" data-sample="I love Python">I love Python</button>
+        <button class="dark-glass-pill" data-sample="Python love I">Python love I</button>
+        <button class="dark-glass-pill" data-sample="The capital of France is Paris">The capital of France is Paris</button>
+      </div>
+
+      <div class="status-text" id="statusLine">
+        <span>Click "Calculate perplexity" or a sample to load the model in your browser.</span>
+      </div>
+
+      <div class="error-banner" id="errorBox"></div>
+    </section>
+
+    <!-- -------------------------------------------------------
+         CARD 2: PROBABILITY OF EACH TOKEN -> PERPLEXITY
+         ------------------------------------------------------- -->
+    <section class="glass-card" id="sec2">
+      <div class="card-header-row">
+        <h2 class="card-heading">2. Probability of each token → perplexity</h2>
+      </div>
+      <p class="card-description">
+        Run a sentence in Section 1 to see each token's probability and the step-by-step perplexity calculation.
+      </p>
+
+      <div class="table-wrapper">
+        <table class="dark-table" id="tokenTable">
+          <thead>
+            <tr>
+              <th style="width: 50px; text-align: center;">#</th>
+              <th>TOKEN</th>
+              <th style="text-align: right;">PROBABILITY P</th>
+              <th style="text-align: right;">1 / P</th>
+            </tr>
+          </thead>
+          <tbody id="tokenTableBody">
+            <tr>
+              <td colspan="4" class="empty-row-cell">
+                No tokens calculated yet. Click "Calculate perplexity" above.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 3-Column Horizontal Step Grid -->
+      <div class="step-grid">
+        <div class="step-subcard">
+          <span class="step-header-label">STEP 1 · MULTIPLY 1/P</span>
+          <span class="step-display-value" id="step1Val">—</span>
+        </div>
+
+        <div class="step-subcard">
+          <span class="step-header-label">STEP 2 · TOKEN COUNT</span>
+          <span class="step-display-value" id="step2Val">—</span>
+        </div>
+
+        <div class="step-subcard step3-highlight">
+          <div>
+            <span class="step-header-label">STEP 3 · PERPLEXITY = (PRODUCT)^(1/N)</span>
+            <span class="step3-large-number" id="step3Val">—</span>
+          </div>
+          <p class="step-intuition-text" id="plainEnglishNote"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- -------------------------------------------------------
+         CARD 3: WHAT DOES THE MODEL PREDICT NEXT?
+         ------------------------------------------------------- -->
+    <section class="glass-card" id="sec3">
+      <div class="card-header-row">
+        <h2 class="card-heading">3. What does the model predict next?</h2>
+      </div>
+      <p class="card-description" id="predSubtitle">
+        Top 8 next-token predictions from the final position will appear here after calculation.
+      </p>
+
+      <div class="predictions-container" id="predictionsGrid" style="display: none;"></div>
+    </section>
+
+    <!-- -------------------------------------------------------
+         CARD 4: TRY IT BY HAND (SIMULATOR)
+         ------------------------------------------------------- -->
+    <section class="glass-card" id="sec4">
+      <div class="card-header-row">
+        <h2 class="card-heading">4. Try it by hand</h2>
+        <span class="badge-amber">Simulated, not from the model</span>
+      </div>
+
+      <div class="samples-row" style="margin-bottom: 16px;">
+        <span class="samples-label">Presets:</span>
+        <button class="dark-glass-pill" id="presetPython">I love Python</button>
+        <button class="dark-glass-pill" id="presetUniform">All 1/8</button>
+        <button class="dark-glass-pill" id="presetSurprise">One surprising word</button>
+      </div>
+
+      <!-- Editable Token Rows -->
+      <div id="handTokenRows"></div>
+
+      <button id="addTokenBtn" class="btn-add-row">
+        <span>+ Add token</span>
+      </button>
+
+      <!-- Simulated Table -->
+      <div class="table-wrapper">
+        <table class="dark-table">
+          <thead>
+            <tr>
+              <th style="width: 50px; text-align: center;">#</th>
+              <th>TOKEN</th>
+              <th style="text-align: right;">PROBABILITY P</th>
+              <th style="text-align: right;">1 / P</th>
+            </tr>
+          </thead>
+          <tbody id="simTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Simulated 3-Column Horizontal Step Grid -->
+      <div class="step-grid">
+        <div class="step-subcard">
+          <span class="step-header-label">STEP 1 · MULTIPLY 1/P</span>
+          <span class="step-display-value" id="simStep1Val">—</span>
+        </div>
+
+        <div class="step-subcard">
+          <span class="step-header-label">STEP 2 · TOKEN COUNT</span>
+          <span class="step-display-value" id="simStep2Val">—</span>
+        </div>
+
+        <div class="step-subcard step3-highlight">
+          <div>
+            <span class="step-header-label">STEP 3 · PERPLEXITY = (PRODUCT)^(1/N)</span>
+            <span class="step3-large-number" id="simStep3Val">—</span>
+          </div>
+          <p class="step-intuition-text" id="simPlainEnglishNote"></p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================
+       SUBTLE DARK FOOTER
+       ========================================================= -->
+  <footer class="space-footer">
+    <div class="footer-inner">
+      <div class="footer-left">▲ Perplexity Explorer · Ascend Edition</div>
+      <div class="footer-right">© 2026 · Built among the stars</div>
+    </div>
+  </footer>
+
+  <!-- =========================================================
+       THREE.JS INTERACTIVE 3D REVOLVING EARTH GLOBE & SCROLL LOGIC
+       ========================================================= -->
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+    // -------------------------------------------------------------
+    // PROCEDURAL HIGH-RESOLUTION EARTH TEXTURE GENERATION
+    // (Self-contained, ultra-crisp continents, night lights & clouds)
+    // -------------------------------------------------------------
+    function createProceduralEarthTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 2048;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      // 1. Deep Ocean Base with subtle depth gradient
+      const oceanGrad = ctx.createLinearGradient(0, 0, 0, 1024);
+      oceanGrad.addColorStop(0, '#040d1a');
+      oceanGrad.addColorStop(0.3, '#081c38');
+      oceanGrad.addColorStop(0.5, '#0a2347');
+      oceanGrad.addColorStop(0.7, '#081c38');
+      oceanGrad.addColorStop(1, '#030a14');
+      ctx.fillStyle = oceanGrad;
+      ctx.fillRect(0, 0, 2048, 1024);
+
+      // Helper to paint continental landmasses
+      function drawContinent(points, landColor) {
+        ctx.fillStyle = landColor;
+        ctx.beginPath();
+        for (let i = 0; i < points.length; i++) {
+          const [x, y] = points[i];
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // North America
+      drawContinent([
+        [280, 180], [380, 160], [480, 220], [540, 290], [500, 360],
+        [430, 440], [390, 470], [360, 430], [320, 380], [280, 310]
+      ], '#1d3b25');
+      // South America
+      drawContinent([
+        [430, 480], [520, 520], [570, 600], [520, 750], [460, 850],
+        [420, 780], [410, 620], [400, 530]
+      ], '#23442a');
+      // Eurasia
+      drawContinent([
+        [880, 160], [1050, 140], [1300, 150], [1500, 210], [1650, 260],
+        [1580, 380], [1400, 420], [1200, 380], [1050, 320], [950, 280]
+      ], '#203d24');
+      // Africa
+      drawContinent([
+        [960, 340], [1100, 360], [1160, 460], [1120, 620], [1060, 720],
+        [980, 650], [920, 480], [920, 380]
+      ], '#3b3b22');
+      // Australia
+      drawContinent([
+        [1500, 620], [1650, 640], [1680, 750], [1580, 820], [1480, 740]
+      ], '#453823');
+
+      // 2. Night City Lights Overlay (Golden-amber clusters)
+      ctx.fillStyle = '#ffcf70';
+      const cityClusters = [
+        // US East & West
+        [460, 340, 35], [330, 330, 25], [370, 380, 30],
+        // Europe
+        [1010, 260, 40], [1050, 280, 35],
+        // East Asia & India
+        [1450, 360, 45], [1280, 420, 38], [1560, 340, 32],
+        // South America & Australia coast
+        [510, 680, 20], [1630, 720, 20]
+      ];
+      cityClusters.forEach(([cx, cy, count]) => {
+        for (let i = 0; i < count; i++) {
+          const px = cx + (Math.random() - 0.5) * 60;
+          const py = cy + (Math.random() - 0.5) * 50;
+          const rad = Math.random() * 2 + 0.5;
+          ctx.beginPath();
+          ctx.arc(px, py, rad, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // 3. Realistic Soft Cloud Swirls
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.26)';
+      for (let i = 0; i < 45; i++) {
+        const x = Math.random() * 2048;
+        const y = 150 + Math.random() * 700;
+        const w = 120 + Math.random() * 260;
+        const h = 25 + Math.random() * 60;
+        ctx.beginPath();
+        ctx.ellipse(x, y, w, h, (Math.random() - 0.5) * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    // -------------------------------------------------------------
+    // THREE.JS SCENE SETUP
+    // -------------------------------------------------------------
+    const container = document.getElementById('canvasContainer');
+    const canvas = document.getElementById('earthCanvas');
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(0, 0, 5.2);
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance'
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Deep Space Starfield (Soft Circular Pinpoints)
+    const starsCount = 900;
+    const starGeometry = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(starsCount * 3);
+    for (let i = 0; i < starsCount * 3; i += 3) {
+      starPositions[i] = (Math.random() - 0.5) * 160;
+      starPositions[i + 1] = (Math.random() - 0.5) * 160;
+      starPositions[i + 2] = -25 - Math.random() * 60;
+    }
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    
+    // Circular star alpha sprite
+    const starCanvas = document.createElement('canvas');
+    starCanvas.width = 16;
+    starCanvas.height = 16;
+    const starCtx = starCanvas.getContext('2d');
+    const grad = starCtx.createRadialGradient(8, 8, 0, 8, 8, 8);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    grad.addColorStop(0.4, 'rgba(186, 230, 253, 0.8)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    starCtx.fillStyle = grad;
+    starCtx.fillRect(0, 0, 16, 16);
+    const starTexture = new THREE.CanvasTexture(starCanvas);
+
+    const starMaterial = new THREE.PointsMaterial({
+      map: starTexture,
+      size: 1.2,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const starfield = new THREE.Points(starGeometry, starMaterial);
+    scene.add(starfield);
+
+    // Earth Sphere Group
+    const earthGroup = new THREE.Group();
+    // Positioned below center so its curved atmospheric horizon arcs across the hero subtitle & Card 1
+    earthGroup.position.set(0, -2.1, 0);
+    earthGroup.rotation.z = 0.38; // Earth's natural 23.5° axial tilt
+    scene.add(earthGroup);
+
+    // Earth Sphere Geometry
+    const earthRadius = 2.85;
+    const earthGeometry = new THREE.SphereGeometry(earthRadius, 64, 64);
+    const earthTexture = createProceduralEarthTexture();
+    earthTexture.wrapS = THREE.RepeatWrapping;
+
+    const earthMaterial = new THREE.MeshStandardMaterial({
+      map: earthTexture,
+      roughness: 0.65,
+      metalness: 0.1
+    });
+
+    // Attempt loading photorealistic satellite texture, falling back to procedural canvas
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(
+      'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=2000&q=80',
+      (tex) => {
+        tex.wrapS = THREE.RepeatWrapping;
+        earthMaterial.map = tex;
+        earthMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        // Procedural texture remains active
+      }
+    );
+
+    const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+    earthGroup.add(earthMesh);
+
+    // Atmospheric Rayleigh Scattering Glow Mesh (Cyan-Blue Rim)
+    const atmosphereGeometry = new THREE.SphereGeometry(earthRadius * 1.018, 64, 64);
+    const atmosphereMaterial = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          vec3 viewDir = normalize(-vPosition);
+          float rim = 1.0 - max(0.0, dot(vNormal, viewDir));
+          float intensity = pow(rim, 2.5);
+          // Bright cyan-blue Rayleigh glow
+          vec3 atmosphereColor = mix(vec3(0.18, 0.55, 0.98), vec3(0.20, 0.83, 0.74), 0.3);
+          gl_FragColor = vec4(atmosphereColor, intensity * 0.95);
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      side: THREE.FrontSide
+    });
+    const atmosphereMesh = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+    earthGroup.add(atmosphereMesh);
+
+    // Directional Sunlight & Ambient Illumination
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.8);
+    sunLight.position.set(6, 4, 5);
+    scene.add(sunLight);
+
+    const ambientLight = new THREE.AmbientLight(0x0c1e34, 0.55);
+    scene.add(ambientLight);
+
+    // -------------------------------------------------------------
+    // SMOOTH SCROLL-DRIVEN ROTATION & PROGRESSIVE BLUR TRANSITION
+    // -------------------------------------------------------------
+    let baseRotation = 0;
+    let currentScrollY = 0;
+
+    function onScrollUpdate() {
+      // Smooth lerp calculation occurs in animation loop
+    }
+    window.addEventListener('scroll', onScrollUpdate, { passive: true });
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Natural axial revolution
+      baseRotation += 0.0006;
+
+      // Smooth scroll lerp (60fps continuous easing)
+      const targetScrollY = window.scrollY || window.pageYOffset || 0;
+      currentScrollY += (targetScrollY - currentScrollY) * 0.085;
+
+      // 1. Scroll-driven Earth rotation (Earth visibly turns beneath cards as you scroll)
+      earthGroup.rotation.y = baseRotation + currentScrollY * 0.0022;
+
+      // 2. Scroll blur and depth fade (from 0px to 650px)
+      const scrollProgress = Math.min(1, Math.max(0, currentScrollY / 650));
+      const blurPx = scrollProgress * 18; // Crisp 0px at top up to 18px soft bokeh
+      const opacity = 1 - scrollProgress * 0.58; // 1.0 down to 0.42
+      const scale = 1 + scrollProgress * 0.06; // Subtle camera parallax depth
+
+      container.style.filter = `blur(${blurPx.toFixed(1)}px)`;
+      container.style.opacity = opacity.toFixed(3);
+      container.style.transform = `scale(${scale.toFixed(4)})`;
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Window Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+
+  <!-- =========================================================
+       TRANSFORMERS.JS IN-BROWSER PIPELINE & CARD LOGIC
+       ========================================================= -->
+  <script type="module">
+    import {
+      AutoTokenizer,
+      AutoModelForCausalLM,
+      Tensor
+    } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3";
+
+    let tokenizer = null;
+    let model = null;
+    let isModelLoading = false;
+
+    const sentenceInput = document.getElementById("sentenceInput");
+    const calcBtn = document.getElementById("calcBtn");
+    const btnText = document.getElementById("btnText");
+    const statusLine = document.getElementById("statusLine");
+    const errorBox = document.getElementById("errorBox");
+
+    const tokenTableBody = document.getElementById("tokenTableBody");
+    const step1Val = document.getElementById("step1Val");
+    const step2Val = document.getElementById("step2Val");
+    const step3Val = document.getElementById("step3Val");
+    const plainEnglishNote = document.getElementById("plainEnglishNote");
+
+    const predSubtitle = document.getElementById("predSubtitle");
+    const predictionsGrid = document.getElementById("predictionsGrid");
+
+    function formatDisplayToken(raw) {
+      if (!raw) return "—";
+      return raw.replace(/ /g, "␣");
+    }
+
+    async function loadModelIfNeeded() {
+      if (model && tokenizer) return;
+      if (isModelLoading) return;
+
+      isModelLoading = true;
+      calcBtn.disabled = true;
+      btnText.textContent = "Loading model…";
+      statusLine.className = "status-text";
+      statusLine.textContent = "Downloading the model weights (Xenova/distilgpt2 q8)…";
+      errorBox.style.display = "none";
+
+      try {
+        tokenizer = await AutoTokenizer.from_pretrained("Xenova/distilgpt2");
+        model = await AutoModelForCausalLM.from_pretrained("Xenova/distilgpt2", {
+          dtype: "q8"
+        });
+
+        statusLine.className = "status-text ready";
+        statusLine.textContent = "Model ready (DistilGPT-2 Q8)";
+      } catch (err) {
+        console.error("Failed to load model:", err);
+        statusLine.className = "status-text error";
+        statusLine.textContent = "Failed to load DistilGPT-2.";
+        errorBox.style.display = "block";
+        errorBox.textContent = "Error loading model from CDN: " + (err.message || err);
+        throw err;
+      } finally {
+        isModelLoading = false;
+        calcBtn.disabled = false;
+        btnText.textContent = "Calculate perplexity";
+      }
+    }
+
+    async function calculatePerplexity(sentence) {
+      const text = sentence.trim();
+      if (!text) return;
+
+      await loadModelIfNeeded();
+
+      calcBtn.disabled = true;
+      btnText.textContent = "Calculating…";
+
+      try {
+        // Prepend start marker 50256 (EOS/<|endoftext|>)
+        const encoded = tokenizer.encode(text);
+        const tokenIds = [50256, ...encoded];
+        const n = tokenIds.length;
+
+        const input_ids = new Tensor("int64", BigInt64Array.from(tokenIds.map(x => BigInt(x))), [1, n]);
+        const attention_mask = new Tensor("int64", BigInt64Array.from(new Array(n).fill(1n)), [1, n]);
+        const position_ids = new Tensor("int64", BigInt64Array.from(tokenIds.map((_, i) => BigInt(i))), [1, n]);
+
+        const output = await model({ input_ids, attention_mask, position_ids });
+        const [batch, seqLen, vocabSize] = output.logits.dims;
+        const data = output.logits.data;
+
+        const tokensResult = [];
+        let totalNegLogProb = 0;
+        let chainProduct = 1;
+
+        for (let pos = 1; pos < seqLen; pos++) {
+          const targetToken = tokenIds[pos];
+          const prevPos = pos - 1;
+          const sliceStart = prevPos * vocabSize;
+
+          let maxLogit = -Infinity;
+          for (let v = 0; v < vocabSize; v++) {
+            const val = data[sliceStart + v];
+            if (val > maxLogit) maxLogit = val;
+          }
+
+          let sumExp = 0;
+          for (let v = 0; v < vocabSize; v++) {
+            sumExp += Math.exp(data[sliceStart + v] - maxLogit);
+          }
+
+          const targetLogit = data[sliceStart + targetToken];
+          const prob = Math.max(1e-12, Math.exp(targetLogit - maxLogit) / sumExp);
+          const invProb = 1 / prob;
+
+          totalNegLogProb += -Math.log(prob);
+          chainProduct *= invProb;
+
+          const rawDecoded = tokenizer.decode([targetToken]);
+          tokensResult.push({
+            id: targetToken,
+            rawToken: rawDecoded,
+            displayToken: formatDisplayToken(rawDecoded),
+            prob: prob,
+            invProb: invProb
+          });
+        }
+
+        const tokenCount = tokensResult.length;
+        const perplexity = Math.exp(totalNegLogProb / tokenCount);
+
+        renderTokenTable(tokensResult);
+        renderThreeSteps(tokensResult, chainProduct, tokenCount, perplexity);
+
+        // Top 8 predictions
+        const lastPos = seqLen - 1;
+        const lastSlice = lastPos * vocabSize;
+        let lastMaxLogit = -Infinity;
+        for (let v = 0; v < vocabSize; v++) {
+          const val = data[lastSlice + v];
+          if (val > lastMaxLogit) lastMaxLogit = val;
+        }
+
+        let lastSumExp = 0;
+        for (let v = 0; v < vocabSize; v++) {
+          lastSumExp += Math.exp(data[lastSlice + v] - lastMaxLogit);
+        }
+
+        const candidateList = [];
+        for (let v = 0; v < vocabSize; v++) {
+          const p = Math.exp(data[lastSlice + v] - lastMaxLogit) / lastSumExp;
+          candidateList.push({ id: v, prob: p });
+        }
+        candidateList.sort((a, b) => b.prob - a.prob);
+
+        const top8 = candidateList.slice(0, 8).map((cand, idx) => {
+          const decoded = tokenizer.decode([cand.id]);
+          return {
+            id: cand.id,
+            displayToken: formatDisplayToken(decoded),
+            prob: cand.prob,
+            isTop1: idx === 0
+          };
+        });
+
+        renderTop8Predictions(top8);
+
+      } catch (err) {
+        console.error("Calculation error:", err);
+        errorBox.style.display = "block";
+        errorBox.textContent = "Error executing model forward pass: " + (err.message || err);
+      } finally {
+        calcBtn.disabled = false;
+        btnText.textContent = "Calculate perplexity";
+      }
+    }
+
+    function renderTokenTable(tokens) {
+      tokenTableBody.innerHTML = "";
+      tokens.forEach((t, i) => {
+        const tr = document.createElement("tr");
+
+        const probFormatted = t.prob < 0.0001
+          ? t.prob.toExponential(3)
+          : t.prob.toFixed(4) + ` (${(t.prob * 100).toFixed(3)}%)`;
+
+        const invFormatted = t.invProb >= 1000000
+          ? t.invProb.toExponential(2)
+          : t.invProb.toFixed(2);
+
+        tr.innerHTML = `
+          <td style="text-align: center; color: #94A3B8;" class="mono">${i + 1}</td>
+          <td><span class="token-chip-cyan">${escapeHtml(t.displayToken)}</span></td>
+          <td style="text-align: right; font-weight: 600;" class="mono">${probFormatted}</td>
+          <td style="text-align: right; font-weight: 600;" class="mono">${invFormatted}</td>
+        `;
+        tokenTableBody.appendChild(tr);
+      });
+    }
+
+    function renderThreeSteps(tokens, product, count, ppl) {
+      const chainStrings = tokens.slice(0, 4).map(t => {
+        return t.invProb >= 1000 ? t.invProb.toExponential(1) : t.invProb.toFixed(1);
+      });
+      if (tokens.length > 4) chainStrings.push("…");
+      const prodFormatted = product >= 1e7 || product < 0.001
+        ? product.toExponential(3)
+        : product.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+      step1Val.textContent = `${chainStrings.join(" × ")} = ${prodFormatted}`;
+      step2Val.textContent = `N = ${count} tokens`;
+
+      const pplFormatted = ppl >= 10000 ? ppl.toExponential(2) : ppl.toFixed(2);
+      step3Val.textContent = pplFormatted;
+
+      plainEnglishNote.textContent =
+        `On average, the model was as unsure as choosing between about ${pplFormatted} equally likely tokens.`;
+    }
+
+    function renderTop8Predictions(candidates) {
+      predSubtitle.textContent = "Top 8 next tokens predicted from the final position:";
+      predictionsGrid.style.display = "grid";
+      predictionsGrid.innerHTML = "";
+
+      candidates.forEach((cand, idx) => {
+        const div = document.createElement("div");
+        div.className = "pred-row-card" + (cand.isTop1 ? " top1-candidate" : "");
+
+        const pct = (cand.prob * 100);
+        const pctFormatted = pct >= 1 ? pct.toFixed(1) + "%" : pct.toFixed(2) + "%";
+
+        div.innerHTML = `
+          <div class="pred-meta-row">
+            <div class="pred-token-group">
+              <span class="pred-index-num mono">#${idx + 1}</span>
+              <span class="token-chip-cyan">${escapeHtml(cand.displayToken)}</span>
+              ${cand.isTop1 ? '<span style="font-size: 10px; font-weight: 700; color: #34D399; background: rgba(52,211,153,0.15); padding: 2px 6px; border-radius: 4px;">TOP PICK</span>' : ''}
+            </div>
+            <span class="mono" style="font-weight: 700; font-size: 0.85rem; color: ${cand.isTop1 ? '#34D399' : '#F8FAFC'};">${pctFormatted}</span>
+          </div>
+          <div class="pred-progress-bg">
+            <div class="pred-progress-bar" style="width: ${Math.min(100, Math.max(3, pct))}%;"></div>
+          </div>
+        `;
+        predictionsGrid.appendChild(div);
+      });
+    }
+
+    document.querySelectorAll(".dark-glass-pill[data-sample]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sampleText = btn.getAttribute("data-sample");
+        sentenceInput.value = sampleText;
+        calculatePerplexity(sampleText);
+      });
+    });
+
+    calcBtn.addEventListener("click", () => {
+      calculatePerplexity(sentenceInput.value);
+    });
+
+    sentenceInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        calculatePerplexity(sentenceInput.value);
+      }
+    });
+
+    // -------------------------------------------------------------
+    // CARD 4: TRY IT BY HAND (MANUAL SIMULATOR)
+    // -------------------------------------------------------------
+    const handTokenRows = document.getElementById("handTokenRows");
+    const addTokenBtn = document.getElementById("addTokenBtn");
+    const simTableBody = document.getElementById("simTableBody");
+    const simStep1Val = document.getElementById("simStep1Val");
+    const simStep2Val = document.getElementById("simStep2Val");
+    const simStep3Val = document.getElementById("simStep3Val");
+    const simPlainEnglishNote = document.getElementById("simPlainEnglishNote");
+
+    const SIM_PRESETS = {
+      python: [
+        { name: "I", prob: 0.5 },
+        { name: "love", prob: 0.8 },
+        { name: "Python", prob: 0.2 }
+      ],
+      uniform: Array.from({ length: 8 }, (_, i) => ({
+        name: `token_${i + 1}`,
+        prob: 0.125
+      })),
+      surprise: [
+        { name: "The", prob: 0.9 },
+        { name: "quantum", prob: 0.9 },
+        { name: "thrusters", prob: 0.9 },
+        { name: "banana", prob: 0.01 }
+      ]
+    };
+
+    let simTokens = [...SIM_PRESETS.python];
+
+    function renderSimRows() {
+      handTokenRows.innerHTML = "";
+      simTokens.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "token-edit-row";
+
+        row.innerHTML = `
+          <span class="row-num">#${index + 1}</span>
+          <input type="text" value="${escapeHtml(item.name)}" data-idx="${index}" class="sim-name-input" />
+          <input type="range" min="0.01" max="1.00" step="0.005" value="${item.prob}" data-idx="${index}" class="sim-slider" />
+          <input type="number" min="0.001" max="1.000" step="0.01" value="${item.prob}" data-idx="${index}" class="sim-num-input mono" />
+          <button class="btn-remove-token" data-idx="${index}" title="Remove token">✕</button>
+        `;
+        handTokenRows.appendChild(row);
+      });
+
+      updateSimulation();
+    }
+
+    function updateSimulation() {
+      const valid = simTokens.filter(t => t.prob > 0);
+      const count = valid.length;
+
+      if (count === 0) {
+        simTableBody.innerHTML = '<tr><td colspan="4" class="empty-row-cell">No tokens in simulation.</td></tr>';
+        simStep1Val.textContent = "—";
+        simStep2Val.textContent = "—";
+        simStep3Val.textContent = "—";
+        simPlainEnglishNote.textContent = "";
+        return;
+      }
+
+      let prod = 1;
+      let sumNegLog = 0;
+      simTableBody.innerHTML = "";
+
+      valid.forEach((t, i) => {
+        const inv = 1 / t.prob;
+        prod *= inv;
+        sumNegLog += -Math.log(t.prob);
+
+        const tr = document.createElement("tr");
+        const probFormatted = t.prob.toFixed(4) + ` (${(t.prob * 100).toFixed(1)}%)`;
+        const invFormatted = inv.toFixed(2);
+
+        tr.innerHTML = `
+          <td style="text-align: center; color: #94A3B8;" class="mono">${i + 1}</td>
+          <td><span class="token-chip-cyan">${escapeHtml(t.name)}</span></td>
+          <td style="text-align: right; font-weight: 600;" class="mono">${probFormatted}</td>
+          <td style="text-align: right; font-weight: 600;" class="mono">${invFormatted}</td>
+        `;
+        simTableBody.appendChild(tr);
+      });
+
+      const ppl = Math.exp(sumNegLog / count);
+
+      const chainStrings = valid.slice(0, 4).map(t => (1 / t.prob).toFixed(2));
+      if (valid.length > 4) chainStrings.push("…");
+      const prodFormatted = prod >= 1e7 || prod < 0.001
+        ? prod.toExponential(3)
+        : prod.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+      simStep1Val.textContent = `${chainStrings.join(" × ")} = ${prodFormatted}`;
+      simStep2Val.textContent = `N = ${count} tokens`;
+
+      // Format 2.32 for 2.32079, 8 for 8.00
+      const pplFormatted = Math.abs(ppl - Math.round(ppl)) < 0.001
+        ? Math.round(ppl).toString()
+        : ppl.toFixed(2);
+      simStep3Val.textContent = pplFormatted;
+
+      simPlainEnglishNote.textContent =
+        `On average, the model was as unsure as choosing between about ${pplFormatted} equally likely tokens.`;
+    }
+
+    handTokenRows.addEventListener("input", (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      if (isNaN(idx)) return;
+
+      if (e.target.classList.contains("sim-name-input")) {
+        simTokens[idx].name = e.target.value;
+        updateSimulation();
+      } else if (e.target.classList.contains("sim-slider")) {
+        const val = parseFloat(e.target.value);
+        simTokens[idx].prob = val;
+        const numInput = handTokenRows.querySelector(`.sim-num-input[data-idx="${idx}"]`);
+        if (numInput) numInput.value = val;
+        updateSimulation();
+      } else if (e.target.classList.contains("sim-num-input")) {
+        let val = parseFloat(e.target.value);
+        if (isNaN(val) || val <= 0) val = 0.01;
+        if (val > 1) val = 1.0;
+        simTokens[idx].prob = val;
+        const slider = handTokenRows.querySelector(`.sim-slider[data-idx="${idx}"]`);
+        if (slider) slider.value = val;
+        updateSimulation();
+      }
+    });
+
+    handTokenRows.addEventListener("click", (e) => {
+      if (e.target.classList.contains("btn-remove-token")) {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        if (!isNaN(idx) && simTokens.length > 1) {
+          simTokens.splice(idx, 1);
+          renderSimRows();
+        }
+      }
+    });
+
+    addTokenBtn.addEventListener("click", () => {
+      simTokens.push({
+        name: `token_${simTokens.length + 1}`,
+        prob: 0.5
+      });
+      renderSimRows();
+    });
+
+    document.getElementById("presetPython").addEventListener("click", () => {
+      simTokens = JSON.parse(JSON.stringify(SIM_PRESETS.python));
+      renderSimRows();
+    });
+
+    document.getElementById("presetUniform").addEventListener("click", () => {
+      simTokens = JSON.parse(JSON.stringify(SIM_PRESETS.uniform));
+      renderSimRows();
+    });
+
+    document.getElementById("presetSurprise").addEventListener("click", () => {
+      simTokens = JSON.parse(JSON.stringify(SIM_PRESETS.surprise));
+      renderSimRows();
+    });
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    renderSimRows();
+  </script>
+</body>
+</html>
